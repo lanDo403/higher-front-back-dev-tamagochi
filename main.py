@@ -1,12 +1,22 @@
-import os
-
 from game.models import Food, Medicine
-from game.tamagochi import AbstractTamagochi
-from game.clicker import AbstractClicker
-from game.game import AbstractGame
+from game.tamagochi import SimpleTamagochi
+from game.clicker import SimpleRandomClicker
+from game.exceptions import NotEnoughMoney, TamagochiIsGone
+from game.game import SimpleGame
 
 
-def main():
+def main() -> None:
+    """Запустить консольную игру до смерти питомца или выхода; вернуть None."""
+    print("Добро пожаловать в Тамагочи-кликер!")
+    try:
+        name = input('Введите имя питомца: ').strip()
+        while not name:
+            print('Имя не должно быть пустым.')
+            name = input('Введите имя питомца: ').strip()
+    except (EOFError, KeyboardInterrupt):
+        print('\nИгра завершена.')
+        return
+
     all_food = [
         Food(name='Бургер', satiety=20, price=40),
         Food(name='Салат', satiety=10, price=20),
@@ -17,24 +27,16 @@ def main():
         Medicine(name='Ибупрофен', price=30, heal_hp=20, number_of_uses=2)
     ]
 
-    #  Вместо AbstractTamagochi импортируйте
-    #  и создайте инстанс от своей реализации
-    tamagochi = AbstractTamagochi()
-
-    #  Вместо AbstractClicker импортируйте
-    #  и создайте инстанс от своей реализации
-    clicker = AbstractClicker(10, 20)
-
-    #  Вместо AbstractGame импортируйте
-    #  и создайте инстанс от своей реализации
-    game = AbstractGame(
+    tamagochi = SimpleTamagochi()
+    clicker = SimpleRandomClicker(10, 20)
+    game = SimpleGame(
         tamagochi,
         clicker,
         all_food=all_food,
         all_medicine=all_medicine
     )
 
-    print("Добро пожаловать в Тамагочи-кликер!")
+    print(f'Ваш питомец: {name}.')
     output = ''
 
     while True:
@@ -45,11 +47,11 @@ def main():
 
         status = game.get_status()
         print(
-            f"\nСтатус: голод {status['hunger']}, здоровье {status['hp']}, "
+            f"\n{name}: голод {status['hunger']}, здоровье {status['hp']}, "
             f"энергия {status['energy']}, монет {status['coins']}\n"
         )
         if game.tamagochi.is_sick():
-            print("=======Тамагочи болеет======")
+            print(f"======={name} болеет======")
             print("=======Отдых действует менее эффективно=======")
         print("1. Пойти на работу")
         print("2. Купить еду")
@@ -60,32 +62,38 @@ def main():
         print("7. Отдых")
         print("0. Выход")
 
-        match input("Выберите действие: "):
-            case "1":
-                income = game.work()
-                output = f'Вы заработали {income} монет'
-                game.tamagochi.update()
-            case "2":
-                game.buy_food()
-            case "3":
-                game.buy_medicine()
-            case "4":
-                game.feed_tamagochi()
-
-            case "5":
-                game.heal_tamagochi()
-            case "6":
-                game.play_with_tamagochi()
-                output = 'Вы поиграли с питомцем'
-            case "7":
-                game.rest_tamagochi()
-                output = 'Питомец отдохнул'
-            case "0":
-                break
-            case _:
-                output = "Неверная команда"
-
-        os.system('clear')
+        output = ''
+        try:
+            match input("Выберите действие: "):
+                case "1":
+                    income = game.work()
+                    output = f'Вы заработали {income} монет'
+                case "2":
+                    game.buy_food()
+                case "3":
+                    game.buy_medicine()
+                case "4":
+                    game.feed_tamagochi()
+                case "5":
+                    game.heal_tamagochi()
+                case "6":
+                    game.play_with_tamagochi()
+                    output = f'Вы поиграли с питомцем по имени {name}'
+                case "7":
+                    game.rest_tamagochi()
+                    output = f'{name} отдохнул'
+                case "0":
+                    break
+                case _:
+                    output = "Неверная команда"
+        except NotEnoughMoney as error:
+            output = str(error)
+        except TamagochiIsGone as error:
+            print(f'{name}: {error}')
+            break
+        except (EOFError, KeyboardInterrupt):
+            print('\nИгра завершена.')
+            break
 
 
 if __name__ == "__main__":
